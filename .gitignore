@@ -163,10 +163,10 @@ cython_debug/
 .vscode
 
 # data
-data/
+# data/
 font/
 samples/
 conf/
 
-data 
+# data 
 *.pth
