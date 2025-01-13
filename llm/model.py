@@ -155,7 +155,7 @@ class Block(nn.Module):
         return x
     
 class nanoGPT(nn.Module): 
-    def __init__(self, vocab_len, d_model, n_layers, n_heads, d_ff, dropout, max_len = 512) -> None: 
+    def __init__(self, vocab_len, d_model, n_layers, n_heads, d_ff, dropout, max_len = 1024) -> None: 
         super().__init__() 
         self.embedding = InputEmbedding(vocab_len, d_model)
         self.positional_encoding = PositionalEncoding(d_model, max_len, dropout)
@@ -169,3 +169,17 @@ class nanoGPT(nn.Module):
             x = layer(x)
         x = self.fc(x)
         return x
+    
+def init_model(
+    model_name = "nanoGPT",
+    d_model = 512,
+    n_layers = 3,
+    n_heads = 4,
+    dropout = 0.1,
+    vocab_len = 256
+    
+):
+    # hyperparameters
+    d_ff = 4*d_model     # dimension of feedforward network | 4 times d_model
+    nano_gpt = nanoGPT(vocab_len, d_model, n_layers, n_heads, d_ff, dropout)
+    return nano_gpt

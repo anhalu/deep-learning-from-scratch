@@ -5,13 +5,13 @@ GPT4_SPLIT_PATTERN = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1
 
 
 class BytePairEncoding(Tokenizer): 
-    def __init__(self, vocab_size: int = 255, *args, **kwargs):
+    def __init__(self, vocab_size: int = 300, *args, **kwargs):
         super().__init__()
         assert vocab_size > 255, "vocab_size must be greater than 255."
         self.num_merges = vocab_size - 255 # number of merges.
         self.merges = {} # use for decode.
         self.vocab = {i : bytes([i]) for i in range(256)}  # use for decode.
-        self.vocab_size = 255
+        self.vocab_size = vocab_size
         # an byte range (0, 255 - 8 bit)
         
     def train(self, text, *args, **kwargs):
@@ -30,7 +30,7 @@ class BytePairEncoding(Tokenizer):
             
             # update merges, vocab -> update tokens. 
             new_token = 256 + i # one byte range (0, 255)
-            self.vocab_size += 1
+            # self.vocab_size += 1
             
             self.merges[pair[0], pair[1]] = new_token
             self.vocab[new_token] = self.vocab[pair[0]] + self.vocab[pair[1]] # byte1 + byte2. for decode.
@@ -85,7 +85,7 @@ class BytePairEncoding(Tokenizer):
                     idx, byte = line[0], ' '.join(line[1:])
                     self.vocab[int(idx)] = bytes(byte, 'utf-8')
                     self.vocab_size = max(self.vocab_size, int(idx))
-        self.vocab_size = 255 + self.vocab_size
+        # self.vocab_size = 255 + self.vocab_size
         return self
 
 class RegexBytePairEncoding(Tokenizer):
