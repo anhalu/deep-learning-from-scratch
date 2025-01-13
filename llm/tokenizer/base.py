@@ -16,10 +16,10 @@ class Tokenizer(ABC):
         pass   
 
 
-def get_pairs(tokens: list): 
-    # get pairs bytes from tokens
-    pairs = [(tokens[i], tokens[i + 1]) for i in range(len(tokens) - 1)] 
-    pairs = Counter(pairs)
+def get_pairs(tokens: list, pairs = None): 
+    pairs = {} if pairs is None else pairs
+    for pair in zip(tokens[:-1], tokens[1:]): 
+        pairs[pair] = pairs.get(pair, 0) + 1
     return pairs
 
 def merge_tokens(tokens: list, pair: tuple, new_token): 
