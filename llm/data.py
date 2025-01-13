@@ -9,9 +9,9 @@ class Config:
     BASE_DIR = Path(__file__).resolve().parent
     DATA_DIR = BASE_DIR / 'data'
     MAX_LEN = 256
-    BATCH_SIZE = 400
+    BATCH_SIZE = 200
     TRAIN_RATIO = 0.8
-    NUM_MERGES = 2000
+    NUM_MERGES = 500
     VOCAB = """aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ0123456789!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~\n """
 
 class TextDataset(Dataset):

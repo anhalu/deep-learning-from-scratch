@@ -1,6 +1,7 @@
 from .base import Tokenizer, get_pairs, merge_tokens
 import regex as re
-
+import json
+from tqdm import tqdm
 GPT4_SPLIT_PATTERN = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+"""
 
 
@@ -65,28 +66,27 @@ class BytePairEncoding(Tokenizer):
         return text
     
     def save_tokenizer(self, path: str, *args, **kwargs):
-        # save merges, vocab to file.
-        with open(path, 'w') as f:
-            for (a, b), c in self.merges.items():
-                f.write(f"{a} {b} {c}\n")
-            for idx, byte in self.vocab.items():
-                f.write(f"{idx} {byte}\n")
-    
-    def load_tokenizer(self, path: str, *args, **kwargs): 
-        # load merges, vocab from file.
-        with open(path, 'r') as f:
-            for _line in f:
-                line = _line.strip().split()
-                if len(line) == 3 and 'b' not in _line:
-                    a, b, c = map(int, line)
-                    self.merges[a, b] = c
-                else: 
-                    # line = 
-                    idx, byte = line[0], ' '.join(line[1:])
-                    self.vocab[int(idx)] = bytes(byte, 'utf-8')
-                    self.vocab_size = max(self.vocab_size, int(idx))
-        # self.vocab_size = 255 + self.vocab_size
+        # save with json format. 
+        merges_str_keys = {str(k): v for k, v in self.merges.items()}
+        vocab_serializable = {k: list(v) for k, v in self.vocab.items()}
+        
+        with open(path , 'w', encoding='utf-8') as f:
+            json.dump({
+                "merges": merges_str_keys,
+                "vocab": vocab_serializable
+            }, f)
+        
+    def load_tokenizer(self, path: str, *args, **kwargs):
+        # load with json format. 
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            # Convert string keys back to tuples and lists of integers back to bytes
+            self.merges = {eval(k): v for k, v in data['merges'].items()}
+            self.vocab = {int(k): bytes(v) for k, v in data['vocab'].items()}
+            self.vocab_size = max(self.vocab.keys())
         return self
+                  
+                  
 
 class RegexBytePairEncoding(Tokenizer):
     """
@@ -101,7 +101,6 @@ class RegexBytePairEncoding(Tokenizer):
         self.num_merges = vocab_size - 255
         self.merges = {} # use (a, b) -> c for decode.
         self.vocab = {i: bytes([i]) for i in range(255)}  # use idx -> byte for decode.
-        self.vocab_size = 255
         # an byte range (0, 255 - 8 bit)
         
         self.special_tokens = {} 
@@ -115,7 +114,8 @@ class RegexBytePairEncoding(Tokenizer):
         """
         
         list_pattern = re.findall(self.compiled_pattern, text)
-        for i in range(self.num_merges): 
+        list_pattern = [list(pattern.encode('utf-8')) for pattern in list_pattern]
+        for i in tqdm(range(self.num_merges), desc="Merges"): 
             pairs = {}
             for pattern in list_pattern: 
                 # get pairs in each pattern
@@ -123,8 +123,8 @@ class RegexBytePairEncoding(Tokenizer):
             
             # get the most frequency pair
             pair = max(pairs, key=pairs.get)
-            new_token = self.vocab_size + i + 1  # i start = 0 then we need + 1.
-            self.vocab_size += 1
+            new_token = 256 + i   # i start = 0 then we need + 1.
+
             self.merges[pair[0], pair[1]] = new_token
             self.vocab[new_token] = self.vocab[pair[0]] + self.vocab[pair[1]]
             
@@ -160,7 +160,12 @@ class RegexBytePairEncoding(Tokenizer):
         
         return tokens
     
-    
+    def regex_encode(self, text: str, *args, **kwargs) -> list: 
+        list_pattern = re.findall(self.compiled_pattern, text) 
+        tokens = []
+        for pattern in list_pattern: 
+            tokens.extend(self.origin_encode(pattern))
+        return tokens
     
     def encode(self, text:str, allowed_special="none_raise"): 
         """
@@ -183,24 +188,57 @@ class RegexBytePairEncoding(Tokenizer):
         else:
             raise ValueError(f"allowed_special={allowed_special} not understood")
         
+        if not special: 
+            return self.origin_encode(text) 
+        
+        special_pattern = "(" + "|".join(re.escape(k) for k in special) + ")"
+        special_chunks = re.split(special_pattern, text)
+        
+        tokens = []
+        for chunk in special_chunks:
+            if chunk in special:
+                tokens.append(special[chunk])
+            else:
+                tokens.extend(self.origin_encode(chunk))
+        
+        return tokens
         
     
-    
+    def decode(self, tokens: list, *args, **kwargs) -> str:
+        # given ids (list of integers), return Python string
+        part_bytes = []
+        for idx in tokens:
+            if idx in self.vocab:
+                part_bytes.append(self.vocab[idx])
+            elif idx in self.reverse_special_tokens:
+                part_bytes.append(self.reverse_special_tokens[idx].encode("utf-8"))
+            else:
+                raise ValueError(f"invalid token id: {idx}")
+        text_bytes = b"".join(part_bytes)
+        text = text_bytes.decode("utf-8", errors="replace")
+        return text
 
-if __name__ == "__main__": 
-    bpe = BytePairEncoding()
-    text = """6..Trời xanh quen thói má hồng đánh ghen.
-7..Cảo thơm lần giở trước đèn,
-8..Phong tình có lục còn truyền sử xanh.
-9,,Rằng năm Gia Tĩnh triều Minh,
-10.. Bốn phương phẳng lặng, hai kinh vững vàng.
-11..Có nhà viên ngoại họ Vương,
-12..Gia tư nghĩ cũng thường thường bực trung."""
-    bpe.train(text)
-    
-    en = bpe.encode('Trời xanh quen thói')
-    print(en) 
-    de = bpe.decode(en) 
-    print(de)
-    
-    
+    def save_tokenizer(self, path: str, *args, **kwargs):
+        # save with json format. 
+        merges_str_keys = {str(k): v for k, v in self.merges.items()}
+        vocab_serializable = {k: list(v) if isinstance(v, bytes) else v for k, v in self.vocab.items()}
+        special_tokens_serializable = {k: list(v) if isinstance(v, bytes) else v for k, v in self.special_tokens.items()}
+        
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump({
+                "merges": merges_str_keys,
+                "vocab": vocab_serializable,
+                "special_tokens": special_tokens_serializable
+            }, f)
+            
+    def load_tokenizer(self, path: str, *args, **kwargs):
+        # load with json format. 
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            # Convert string keys back to tuples and lists of integers back to bytes
+            self.merges = {eval(k): v for k, v in data['merges'].items()}
+            self.vocab = {int(k): bytes(v) if isinstance(v, list) else v for k, v in data['vocab'].items()}
+            self.special_tokens = {k: v for k, v in data['special_tokens'].items()}
+            self.reverse_special_tokens = {v: k for k, v in self.special_tokens.items()}
+            self.vocab_size = len(self.vocab) + len(self.special_tokens) 
+        return self

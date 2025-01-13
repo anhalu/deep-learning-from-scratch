@@ -150,8 +150,8 @@ class Block(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor: 
         # norm + residual -> attention -> norm + residual -> feedforward -> norm + residual
-        x = self.attn(self.norm1(x) + x) 
-        x = self.ffwd(self.norm2(x) + x)
+        x = self.attn(self.norm1(x)) + x 
+        x = self.ffwd(self.norm2(x)) + x
         return x
     
 class nanoGPT(nn.Module): 
@@ -173,11 +173,10 @@ class nanoGPT(nn.Module):
 def init_model(
     model_name = "nanoGPT",
     d_model = 512,
-    n_layers = 3,
-    n_heads = 4,
-    dropout = 0.1,
+    n_layers = 6,
+    n_heads = 8,
+    dropout = 0.2,
     vocab_len = 256
-    
 ):
     # hyperparameters
     d_ff = 4*d_model     # dimension of feedforward network | 4 times d_model
