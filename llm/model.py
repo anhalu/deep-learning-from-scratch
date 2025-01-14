@@ -173,9 +173,9 @@ class nanoGPT(nn.Module):
 def init_model(
     model_name = "nanoGPT",
     d_model = 512,
-    n_layers = 6,
-    n_heads = 8,
-    dropout = 0.2,
+    n_layers = 3,
+    n_heads = 4,
+    dropout = 0.15,
     vocab_len = 256
 ):
     # hyperparameters

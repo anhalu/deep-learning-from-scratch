@@ -85,7 +85,7 @@ def generate_text(model, start_text, max_len, device, encoder):
                 break
     return start_text
 
-def train_script_ddp(rank, world_size, model, train_loader, test_loader, loss_fn, optimizer, n_epochs, device, tokenizer, patience=3):
+def train_script_ddp(rank, world_size, model, train_loader, test_loader, loss_fn, optimizer, n_epochs, device, tokenizer, patience=5):
     # Setup DDP
     torch.cuda.set_device(rank)
     device = torch.device(f"cuda:{rank}")
@@ -154,7 +154,7 @@ def train_script_ddp(rank, world_size, model, train_loader, test_loader, loss_fn
     
 def main(): 
     # init tokenizer. 
-    tokenizer = RegexBytePairEncoding(vocab_size=500)
+    tokenizer = RegexBytePairEncoding(vocab_size=10000)
     # tokenizer.load_tokenizer("tokenizer_regex.json")
     
     # load data and create dataloader
@@ -163,7 +163,8 @@ def main():
     
     # create tokenizer 
     # tokenizer.train(data)
-    tokenizer.save_tokenizer("tokenizer_regex_vocab_size_500.json")
+    # tokenizer.save_tokenizer(f"tokenizer_regex_vocab_size_{tokenizer.vocab_size}.json")
+    tokenizer.load_tokenizer(f"tokenizer_regex_vocab_size_{tokenizer.vocab_size}.json")
     
     train_loader, test_loader = data_processor.get_dataloaders()   
     
@@ -192,10 +193,11 @@ def main():
     nano_gpt.load_state_dict(torch.load("nanoGPT_multi_gpu_layer_6_head_8.pth"))
     
     # infer test
-    start_text = '16. Thúy Kiều là chị, em là Thúy Vân.' 
+    start_text = '1..Trăm năm trong' 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     generated_text = generate_text(nano_gpt, start_text, Config.MAX_LEN, device, encoder=tokenizer.encode)
     generated_text = generated_text.squeeze(0).cpu().numpy()
+    print(generated_text)
     generated_text = tokenizer.decode(generated_text)
     print(generated_text)
     
@@ -203,6 +205,6 @@ if __name__ == '__main__':
     import os
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,2,3"
     os.environ["NCCL_P2P_DISABLE"] = "1"
     main()

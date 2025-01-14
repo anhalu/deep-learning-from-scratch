@@ -121,8 +121,15 @@ class RegexBytePairEncoding(Tokenizer):
                 # get pairs in each pattern
                 pairs = get_pairs(pattern, pairs)
             
+            if not pairs : 
+                break
             # get the most frequency pair
             pair = max(pairs, key=pairs.get)
+
+            # check if frequency < 2 then break.
+            # if pairs[pair] < 5:
+            #     print(f"pair frequency < 5: {pair} then not merge.")
+            #     break
             new_token = 256 + i   # i start = 0 then we need + 1.
 
             self.merges[pair[0], pair[1]] = new_token
