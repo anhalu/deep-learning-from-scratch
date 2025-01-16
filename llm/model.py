@@ -150,8 +150,8 @@ class Block(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor: 
         # norm + residual -> attention -> norm + residual -> feedforward -> norm + residual
-        x = self.attn(self.norm1(x)) + x 
-        x = self.ffwd(self.norm2(x)) + x
+        x = x + self.attn(self.norm1(x)) 
+        x = x + self.ffwd(self.norm2(x))
         return x
     
 class nanoGPT(nn.Module): 
