@@ -170,3 +170,4 @@ conf/
 
 # data 
 *.pth
+*.json

@@ -192,20 +192,20 @@ class Roformer(nn.Module):
 def init_model(
     model_name = "Roformer",
     d_model = 512,
-    n_layers = 3,
-    n_heads = 4,
-    dropout = 0.15,
+    n_layers = 6,
+    n_heads = 8,
+    dropout = 0.2,
     vocab_len = 256
 ):
     # hyperparameters
     d_ff = 4*d_model     # dimension of feedforward network | 4 times d_model
-    roformer = Roformer(vocab_len, d_model, n_layers, n_heads, d_ff, dropout).to(device)
+    roformer = Roformer(vocab_len, d_model, n_layers, n_heads, d_ff, dropout)
     return roformer
 
 
 if __name__ == "__main__":
     model = init_model()
     print(model)
-    x = torch.randint(0, 256, (2, 512)).to(device)
+    x = torch.randint(0, 256, (2, 512))
     y = model(x)
     print(x.shape, y.shape)

@@ -24,7 +24,7 @@ class BytePairEncoding(Tokenizer):
         text = text.encode('utf-8') # raw text.
         tokens = list(text) # list of each byte (int) in utf-8
         
-        for i in range(self.num_merges): 
+        for i in tqdm(range(self.num_merges)): 
             pairs = get_pairs(tokens=tokens) # return pairs (a, b) -> freq.
             # get the most frequency pair
             pair = max(pairs, key = pairs.get)

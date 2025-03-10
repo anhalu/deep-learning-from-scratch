@@ -1,8 +1,12 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
-from model import init_model
+from llm.roformer.roformer import init_model
 from data import DataProcessor, Config
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -154,7 +158,7 @@ def train_script_ddp(rank, world_size, model, train_loader, test_loader, loss_fn
     
 def main(): 
     # init tokenizer. 
-    tokenizer = RegexBytePairEncoding(vocab_size=10000)
+    tokenizer = BytePairEncoding(vocab_size=10000)
     # tokenizer.load_tokenizer("tokenizer_regex.json")
     
     # load data and create dataloader
@@ -162,40 +166,40 @@ def main():
     data = data_processor.load_data()
     
     # create tokenizer 
-    # tokenizer.train(data)
-    # tokenizer.save_tokenizer(f"tokenizer_regex_vocab_size_{tokenizer.vocab_size}.json")
-    tokenizer.load_tokenizer(f"tokenizer_regex_vocab_size_{tokenizer.vocab_size}.json")
+    tokenizer.train(data)
+    tokenizer.save_tokenizer(f"llm/tokenizer/tokenizer_vocab_size_{tokenizer.vocab_size}.json")
+    tokenizer.load_tokenizer(f"llm/tokenizer/tokenizer_vocab_size_{tokenizer.vocab_size}.json")
     
     train_loader, test_loader = data_processor.get_dataloaders()   
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    nano_gpt = init_model(vocab_len=tokenizer.vocab_size)
+    roformer = init_model(vocab_len=tokenizer.vocab_size)
     
     lr = 1e-4
     n_epochs = 50
-    optimizer = torch.optim.Adam(nano_gpt.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(roformer.parameters(), lr=lr)
     loss_fn = torch.nn.CrossEntropyLoss()
 
     world_size = torch.cuda.device_count()  # Number of GPUs
     print("Number of GPUs: ", world_size)
     mp.spawn(
         train_script_ddp,
-        args=(world_size, nano_gpt, train_loader, test_loader, loss_fn, optimizer, n_epochs, device, tokenizer),
+        args=(world_size, roformer, train_loader, test_loader, loss_fn, optimizer, n_epochs, device, tokenizer),
         nprocs=world_size,
         join=True
     )
     
 
     # save model 
-    torch.save(nano_gpt.state_dict(), "nanoGPT_multi_gpu_layer_6_head_8.pth")
+    torch.save(roformer.state_dict(), "roformer.pth")
     
     # load model 
-    nano_gpt.load_state_dict(torch.load("nanoGPT_multi_gpu_layer_6_head_8.pth"))
+    roformer.load_state_dict(torch.load("roformer.pth"))
     
     # infer test
     start_text = '1..Trăm năm trong' 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    generated_text = generate_text(nano_gpt, start_text, Config.MAX_LEN, device, encoder=tokenizer.encode)
+    generated_text = generate_text(roformer, start_text, Config.MAX_LEN, device, encoder=tokenizer.encode)
     generated_text = generated_text.squeeze(0).cpu().numpy()
     print(generated_text)
     generated_text = tokenizer.decode(generated_text)
@@ -204,7 +208,7 @@ def main():
 if __name__ == '__main__':
     import os
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0,2,3"
+    os.environ['MASTER_PORT'] = '12357'
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1,2,3"
     os.environ["NCCL_P2P_DISABLE"] = "1"
     main()
